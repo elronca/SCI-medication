@@ -1,4 +1,4 @@
-# Create table with dosages
+# ## Show which drugs/ drug classes are most often taken together
 
 library(tidyverse)
 library(cluster)

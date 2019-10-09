@@ -5,8 +5,6 @@ library(tidyverse)
 library(wesanderson)
 library(extrafont)
 
-windowsFonts(Calibri = windowsFont("Calibri Light"))
-
 load(file.path("workspace", "OME_added.RData"))
 
 
@@ -201,9 +199,8 @@ p <- ggplot(data = drug_freq_prop, mapping = aes(y = prop, x = drug_class, fill 
   
   theme(legend.position = c(0.8, 0.3)) +
   
-  theme(text= element_text(family = "Calibri Light", size = 18))
+  theme(text = element_text(family = "Arial", size = 18))
 
-print(p)
 
 ggsave(file.path("output", "boxplot_drug_freq.pdf"), device = cairo_pdf, width = 20, height = 12, units = "cm")
 ggsave(file.path("output", "boxplot_drug_freq.emf"), device = "emf", width = 20, height = 12, units = "cm")
@@ -212,5 +209,4 @@ ggsave(file.path("output", "boxplot_drug_freq.emf"), device = "emf", width = 20,
 
 # Clear workspace ---------------------------------------------------------
 
-rm("ad", "classify_drug", "drug_classes_list", "drug_freq", "drug_freq_prop", 
-  "p", "ppi1", "prn", "rt")
+rm("ad", "classify_drug", "drug_classes_list", "drug_freq", "drug_freq_prop", "p", "ppi1", "prn", "rt")

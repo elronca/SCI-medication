@@ -7,6 +7,10 @@
 
 library(tidyverse)
 library(pdftools)
+library(extrafont)
+library(RColorBrewer)
+
+windowsFonts(Arial = windowsFont("Arial"))
 
 load(file.path("workspace", "names_harmonized.RData"))
 
@@ -166,75 +170,46 @@ ppi1 <- ppi1 %>%
 
 #  By opioid
 
-  to_plot <- ppi1 %>% 
+to_plot <- ppi1 %>% 
   filter(drug %in% (unique(OME_table$opioid))) %>% 
-  mutate_at(vars(drug, drug_prn), as.factor) 
+  mutate_at(vars(drug, drug_prn), as.factor) %>% 
+  group_by(drug) %>% 
+  mutate(median_dose = median(mo_eq_dose_rt, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  mutate(drug = str_to_sentence(drug)) %>% 
+  mutate(drug = as.factor(drug)) %>% 
+  mutate(drug = fct_reorder(drug, desc(median_dose))) %>% 
+  mutate(group = if_else(!is.na(drug), "Dose of each person", NA_character_))
 
-ggplot(to_plot, aes(x = drug, y = mo_eq_dose_rt)) +
-  geom_boxplot() +
-  geom_jitter(width = 0.25, alpha = 0.5) +
+
+ggplot(to_plot) +
+  
+  geom_boxplot(aes(x = drug, y = mo_eq_dose_rt), outlier.shape = NA) +
+  
+  geom_jitter(aes(x = drug, y = mo_eq_dose_rt, colour = drug), 
+              width = 0.2, alpha = 0.5, size = 2) +
+  
+  geom_hline(yintercept = 50, linetype = "dashed", color = "orange", size = 1, alpha = 0.5) +
+  geom_hline(yintercept = 90, linetype = "dashed", color = "red", size = 1, alpha = 0.5) +
+  
   coord_flip() +
-  labs(x = "Opioids", y = "Daily opioid dose in morphin equivalents") +
-  theme_classic()
+  
+  labs(x = "Opioid", y = "Daily opioid dose in morphin equivalents") +
+  
+  theme_classic() +
+  
+  theme(
+    legend.position = "none",
+    text = element_text(family = "Arial", size = 18)
+)
+
+ggsave(file.path("output", "boxplot_mo_eq.pdf"), device = cairo_pdf, width = 22, height = 15, units = "cm")
+ggsave(file.path("output", "boxplot_mo_eq.svg"), device = "svg", width = 22, height = 15, units = "cm")
 
 sum(is.na(to_plot$mo_eq_dose_rt))
 
 
 
-# Opioids total
-
-ppi1 %>% 
-  drop_na(mo_eq_dose_rt) %>% 
-  summarize(median_MED = median(mo_eq_dose_rt),
-            mean_MED = mean(mo_eq_dose_rt))
-
-
-# by person
-
-m_eq_pp <- ppi1 %>% 
-  
-  filter(drug %in% (unique(OME_table$opioid))) %>% 
-  
-  group_by(id_swisci) %>% 
-  
-  summarize(
-    
-    n = n(), 
-    total_MED = sum(mo_eq_dose_rt, na.rm = TRUE)
-    
-  )
-
-
-filter(m_eq_pp, total_MED > 0) %>% 
-  
-  ggplot(aes(x = "total_MED", y = total_MED)) + 
-  
-  geom_dotplot(binaxis = 'y',
-               dotsize = 1,
-               stackdir = 'center',
-               binwidth = 10) +
-  
-  labs(x = "Individuals with SCI", y = "Daily opioid dose in morphin equivalents") +
-  
-  theme_classic() + 
-  
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
-
-
-if(F) {
-  
-  high_users <- m_eq_pp %>% 
-    filter(total_MED > 150) %>% 
-    pull(id_swisci)
-  
-  filter(ppi1, id_swisci %in% high_users)
-  
-}
-
-
 # Save file and clear workspace -------------------------------------------
 
 save(ppi1, file = file.path("workspace", "OME_added.RData"))
-
-rm("calcMoEqDose", "file_conn", "m_eq_pp", "OME_table_pdf", "OME_table", 
-   "ppi1", "publication_notes", "title", "drugs", "to_plot")

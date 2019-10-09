@@ -8,6 +8,8 @@
 library(tidyverse)
 library(pBrackets)  
 library(grid)
+library(extrafont)
+windowsFonts(Arial = windowsFont("Arial"))
 
 
 
@@ -119,14 +121,15 @@ opioids_plot <- opioids %>%
     
     tp = factor(tp,
                 levels = c("ppi1", "ppi3", "ppi4"),
-                labels = c("t_1 (0 month)", "t_2 (2 month)", "t_3 (5 month)"))) %>% 
+                # labels = c("t_1 (0 month)", "t_2 (2 month)", "t_3 (5 month)"))) %>% 
+                labels = c("0 month", "2 month", "5 month"))) %>% 
   
   mutate(
     
     ther_freq = if_else(ltfu == 0, "ltfu", ther_freq),
     ther_freq = factor(ther_freq,
                        levels = c("ltfu", "no_opioid", "prn", "rt"),
-                       labels = c("lost to follow-up", "no opioid", "pro re nata", "regular therapy")))
+                       labels = c("Lost to follow-up", "No opioid", "Pro re nata", "Regular therapy")))
 
 
 
@@ -145,46 +148,57 @@ bracketsGrob <- function(...) {
 
 x_axis_loc <- 0.16
 
-b1 <- bracketsGrob(x1 = x_axis_loc, y1 = 0.65, x2 = x_axis_loc, y2 = 0.95, h = 0.04, lwd = 2, col = "black")
-b2 <- bracketsGrob(x1 = x_axis_loc, y1 = 0.00, x2 = x_axis_loc, y2 = 0.30, h = 0.04, lwd = 2, col = "black")
+b1 <- bracketsGrob(x1 = x_axis_loc, y1 = 0.55, x2 = x_axis_loc, y2 = 0.9, h = 0.04, lwd = 2, col = "black")
+b2 <- bracketsGrob(x1 = x_axis_loc, y1 = 0.12, x2 = x_axis_loc, y2 = 0.4, h = 0.04, lwd = 2, col = "black")
 
 
 opioids_plot <- opioids_plot %>% 
   group_by(id_swisci) %>% 
   mutate(ltfu_tot = sum(ltfu)) %>% 
   ungroup() %>% 
-  mutate(ltfu_tot = as.factor(if_else(ltfu_tot == 1, "ltfu", "not_ltfu")))
+  mutate(ltfu_tot = as.factor(if_else(ltfu_tot == 1, "ltfu", "not_ltfu"))) %>% 
+  mutate(is_opioid = as.factor(is_opioid))
 
 
-ggplot(opioids_plot, aes(tp, is_opioid_jit, group = id_swisci)) +
+
+# Plot including lost to follow ups ---------------------------------------
+
+pj <- position_jitter(width = 0.05, height = 0.3)
+
+ggplot(data = opioids_plot, mapping = aes(tp, is_opioid, group = id_swisci)) +
   
-  geom_point(aes(fill = ther_freq), alpha = 0.3, size = 3, shape = 21) +
-  geom_line(aes(color = ltfu_tot), alpha = 0.3, show.legend = FALSE) + 
+  geom_point(aes(fill = ther_freq), alpha = 0.5, size = 4, shape = 21, position = pj) +
+  geom_line(aes(linetype = ltfu_tot, color = ltfu_tot), alpha = 0.4, show.legend = FALSE, position = pj) + 
   
-  scale_fill_manual(name = "opioid intake status",
-                    labels = c("lost to follow-up", "no opioid", "pro re nata", "regular therapy"),
-                    values = c("red", "black", "green", "blue")) +
+  scale_fill_manual(name = "Opioid intake status",
+                    labels = c("Lost to follow-up", "No opioid", "Pro re nata", "Regular therapy"),
+                    values = c("grey10", "green", "blue", "red")) +
   
-  scale_colour_manual(values = c("white", "grey10")) +
-  
-  labs(x = "time point", y = "opioid_taken") +
+  scale_colour_manual(values = c("grey2", "grey10")) +
+  scale_linetype_manual(values = c("blank", "dotted")) +
   
   theme_classic() +
   
   theme(axis.text.y = element_blank(), 
-        axis.ticks.x = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.line.x = element_blank(),
-        axis.line.y = element_blank(),
-        axis.title.y = element_blank()) +
+        axis.ticks.x = element_blank(), axis.ticks.y = element_blank(),
+        axis.line.x = element_blank(), axis.line.y = element_blank(),
+        axis.title.x = element_blank(), axis.title.y = element_blank(),
+        legend.position = "bottom",
+        text = element_text(family = "Arial", size = 18)
+        ) +
   
-  coord_fixed(ratio = 2) +
+  guides(fill = guide_legend(nrow = 2, title.theme = element_text(size = 15))) +
   
-  annotate(geom = "text", x = 0.6, y = 1, label = "opioids\ntaken", color = "black") +
-  annotate(geom = "text", x = 0.6, y = -0.05, label = "no\nopioids\ntaken\nor\nlost to\nfollow-up", color = "black") +
+
+  annotate(geom = "text", x = 0.6, y = 2, label = "Opioids\ntaken", color = "black") +
+  annotate(geom = "text", x = 0.6, y = 0.95, label = "No\nopioids\ntaken\nor\nlost to\nfollow-up", color = "black") +
   
-  annotation_custom(b1) +
-  annotation_custom(b2)
+  annotation_custom(b1) + annotation_custom(b2)
+
+ggsave(file.path("output", "opioid_duration.svg"), device = "svg", width = 18, height = 20, units = "cm")
+
+
+
 
 
 ltfu_excl <- opioids_plot %>% 
